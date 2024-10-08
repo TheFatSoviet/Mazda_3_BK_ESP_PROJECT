@@ -45,7 +45,7 @@ BluetoothSerial SerialBT; // Créer un objet BluetoothSerial
 #define NUM_LEDS 13 // Nombre de Leds
 #define LED_TYPE WS2812
 #define COLOR_ORDER GRB
-#define EEPROM_SIZE 4 // Taille éspace eeprom en byte je crois
+#define EEPROM_SIZE 5 // Taille éspace eeprom en byte je crois
 CRGB leds[NUM_LEDS];
 
 #define PIN_RELAIS_ACTION_BOUTONS_VOLANT_HAUT 26
@@ -500,6 +500,7 @@ void ReadVoltage(void *pvParameters)
 void Retro_Motor(void *pvParameters)
 {
 #define Temps_Mouvement_Retro 2500
+#define Temps_OFFSET 200
   bool Moteur_Retro_Mode_Parking = 0;
 
   const char Activation_Moteur_Retro = PIN_DECLANCHEMENT_ABAISSEMENT_RETRO;                    // Pin pour l'activation
@@ -521,18 +522,23 @@ void Retro_Motor(void *pvParameters)
   digitalWrite(Relay_4, LOW);
   digitalWrite(Relay_3, LOW);
 
+  vTaskDelay(pdMS_TO_TICKS(2000));
+
+  
+
   while (1)
   {
 if (digitalRead(Activation_Moteur_Retro) == HIGH)
 {
-  vTaskDelay(pdMS_TO_TICKS(2000)); // delay task 10s
+  vTaskDelay(pdMS_TO_TICKS(2000)); 
       if (digitalRead(Activation_Moteur_Retro) == HIGH && Moteur_Retro_Mode_Parking == 0)
       {
         Serial.print("recule detecter");
         Moteur_Retro_Mode_Parking = 1;
+        EEPROM.write(5, Moteur_Retro_Mode_Parking);
 
         digitalWrite(Relay_1, HIGH);
-        vTaskDelay(Temps_Mouvement_Retro);
+        delay(Temps_Mouvement_Retro);
         digitalWrite(Relay_1, LOW);
         vTaskDelay(pdMS_TO_TICKS(10000)); // delay task
       }
@@ -540,7 +546,7 @@ if (digitalRead(Activation_Moteur_Retro) == HIGH)
 
     if (Moteur_Retro_Mode_Parking == 1)
     {
-      if (digitalRead(Activation_Moteur_Retro) == LOW)
+      if (digitalRead(Activation_Moteur_Retro) == LOW or EEPROM.read(5) == 1)
       {
         digitalWrite(Relay_2, HIGH);
         delay(500);
@@ -548,7 +554,7 @@ if (digitalRead(Activation_Moteur_Retro) == HIGH)
         digitalWrite(Relay_4, HIGH);
         delay(500);
         digitalWrite(Relay_1, HIGH);
-        vTaskDelay(Temps_Mouvement_Retro);
+        delay(Temps_Mouvement_Retro+Temps_OFFSET);
         digitalWrite(Relay_1, LOW);
         delay(200);
         digitalWrite(Relay_3, LOW);
@@ -559,6 +565,7 @@ if (digitalRead(Activation_Moteur_Retro) == HIGH)
 
 
         Moteur_Retro_Mode_Parking = 0;
+        EEPROM.write(5, Moteur_Retro_Mode_Parking);
       }
     }
     vTaskDelay(pdMS_TO_TICKS(50)); // delay task
